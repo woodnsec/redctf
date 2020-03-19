@@ -22,11 +22,12 @@ class Challenge(models.Model):
   pathPrefix = models.CharField(max_length=100, default=None, null=True)
   upload = models.FileField(upload_to=user_directory_path, default=None, null=True)
   created = models.DateTimeField(auto_now_add=True)
+  order = models.IntegerField(null=True, default=None)
 
 class ChallengeAdmin(admin.ModelAdmin):
   #This inner class indicates to the admin interface how to display a post
   #See the Django documentation for more information
-  list_display = ('get_category', 'title', 'points', 'flag', 'pathPrefix', 'upload')
+  list_display = ('get_category', 'title', 'points', 'flag', 'pathPrefix', 'upload', 'order')
 
   def get_category(self, obj):
     return obj.category.name

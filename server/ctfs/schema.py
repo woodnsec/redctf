@@ -19,9 +19,10 @@ class AddCtf(graphene.Mutation):
     class Arguments:
         start = graphene.Int(required=True)
         end = graphene.Int(required=True)
+        # sequentialDisplay = graphene.Boolean(required=False)
         
 
-    def mutate(self, info, start, end):
+    def mutate(self, info, start, end, sequentialDisplay=None):
         user = info.context.user
         # Validate user is admin
         validate_user_is_admin(user)

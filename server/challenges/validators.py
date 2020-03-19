@@ -40,3 +40,7 @@ def validate_pathPrefix_unique(value):
 def validate_challenge_id(value):
     if not Challenge.objects.filter(id__iexact=value).exists():
         raise Exception('chal_id doesnt exists')
+    
+def validate_order(value):
+    if not re.match(r"^[a-zA-Z0-9\ \!\"\#\$\%\&\'\(\)\*\+\,\-\.\/\:\;\<\=\>\?\@\[\\\]\^\_\`\{\|\}\~]{,100}", value):
+        raise Exception('Invalid order value')

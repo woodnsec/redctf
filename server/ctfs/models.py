@@ -7,9 +7,11 @@ class Ctf(models.Model):
   """
   start = models.DateTimeField()
   end = models.DateTimeField()
+  sequentialDisplay = models.BooleanField(default=False)
   created = models.DateTimeField(auto_now_add=True)
+  
 
 class CtfAdmin(admin.ModelAdmin):
   #This inner class indicates to the admin interface how to display a post
   #See the Django documentation for more information
-  list_display = ('start', 'end')
+  list_display = ('start', 'end', 'sequentialDisplay')

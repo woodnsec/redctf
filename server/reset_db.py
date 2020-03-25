@@ -188,9 +188,9 @@ def insertRealChallenges():
                 challenge.save()
                 
                 if c['hosted']:
-                    r.db(CTF_DB).table('challenges').insert({'sid': challenge.id, 'category': challenge.category.id, 'title': c['title'], 'points': challenge.points, 'description': c['description'], 'solved_count': 0, 'hosted': c['hosted'], 'fileUpload': c['fileUpload'], 'imageName': c['imageName'], 'ports': c['ports'], 'pathPrefix': c['pathPrefix'], 'created': format(challenge.created, 'U')}).run(connection)
+                    r.db(CTF_DB).table('challenges').insert({'sid': challenge.id, 'category': challenge.category.id, 'title': c['title'], 'points': challenge.points, 'description': c['description'], 'solved_count': 0, 'hidden': c['hidden'], 'hosted': c['hosted'], 'fileUpload': c['fileUpload'], 'imageName': c['imageName'], 'ports': c['ports'], 'pathPrefix': c['pathPrefix'], 'created': format(challenge.created, 'U')}).run(connection)
                 else:
-                    r.db(CTF_DB).table('challenges').insert({ 'sid': challenge.id, 'category': challenge.category.id, 'title': c['title'], 'points': challenge.points, 'description': c['description'], 'solved_count': 0, 'hosted': c['hosted'], 'fileUpload': c['fileUpload'], 'created': format(challenge.created, 'U')}).run(connection)
+                    r.db(CTF_DB).table('challenges').insert({ 'sid': challenge.id, 'category': challenge.category.id, 'title': c['title'], 'points': challenge.points, 'description': c['description'], 'solved_count': 0, 'hidden': c['hidden'],'hosted': c['hosted'], 'fileUpload': c['fileUpload'], 'created': format(challenge.created, 'U')}).run(connection)
 
     except RqlRuntimeError as e:
         raise Exception('Error adding challenges to realtime database: %s' % (e))

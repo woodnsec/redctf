@@ -1,5 +1,5 @@
 from django.conf import settings
-from django.http import HttpResponse,HttpResponseRedirect
+from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views.decorators.clickjacking import xframe_options_exempt
 from django.contrib.auth.decorators import user_passes_test
@@ -46,7 +46,7 @@ d = dockerAPI()
 
 
 @xframe_options_exempt
-#@user_passes_test(lambda u: u.is_superuser)
+# @user_passes_test(lambda u: u.is_superuser)
 def admin_panel(request):
 
     if request.user.is_superuser:
@@ -60,7 +60,8 @@ def admin_panel(request):
 @user_passes_test(lambda u: u.is_superuser)
 def category_list(request):
     categories = Category.objects.all().order_by('created')
-    return render(request, 'categories/category_list.html', {'categories' : categories})
+    return render(request, 'categories/category_list.html', {'categories': categories})
+
 
 @xframe_options_exempt
 @user_passes_test(lambda u: u.is_superuser)
@@ -68,15 +69,17 @@ def category_detail(request, pk):
     category = get_object_or_404(Category, pk=pk)
     return render(request, 'categories/category_detail.html', {'category': category})
 
+
 @xframe_options_exempt
 @user_passes_test(lambda u: u.is_superuser)
 def category_delete(request, pk):
     category = get_object_or_404(Category, pk=pk)
 
-    #try rethink delete, then django delete
+    # try rethink delete, then django delete
     connection = r.connect(host=RDB_HOST, port=RDB_PORT)
     try:
-        r.db(CTF_DB).table('categories').filter({'sid':category.id}).delete().run(connection)
+        r.db(CTF_DB).table('categories').filter(
+            {'sid': category.id}).delete().run(connection)
         category.delete()
     except Exception as e:
         #raise Exception('Error deleting category from realtime database: %s' % (e))
@@ -86,26 +89,27 @@ def category_delete(request, pk):
 
     return redirect(category_list)
 
+
 @xframe_options_exempt
 @user_passes_test(lambda u: u.is_superuser)
-def category_new (request):
+def category_new(request):
 
     if request.method == 'POST':
         form = CategoryForm(request.POST)
         if form.is_valid():
 
-            #create category object so we have id
+            # create category object so we have id
             new_category = form.save()
 
             # Push category to rethinkdb database
             connection = r.connect(host=RDB_HOST, port=RDB_PORT)
             try:
-                r.db(CTF_DB).table('categories').insert({ 'sid': new_category.id, 'name': new_category.name, 'created': format(new_category.created, 'U')}).run(connection)
+                r.db(CTF_DB).table('categories').insert(
+                    {'sid': new_category.id, 'name': new_category.name, 'created': format(new_category.created, 'U')}).run(connection)
             except Exception as e:
                 raise Exception('Error adding category: %s' % (e))
             finally:
                 connection.close()
-
 
             return redirect('category_detail', pk=new_category.pk)
 
@@ -114,6 +118,7 @@ def category_new (request):
         form = CategoryForm()
 
     return render(request, 'categories/category_edit.html', {'form': form})
+
 
 @xframe_options_exempt
 @user_passes_test(lambda u: u.is_superuser)
@@ -139,13 +144,15 @@ def category_edit(request, pk):
                 connection = r.connect(host=RDB_HOST, port=RDB_PORT)
                 if len(rethink_updates) != 0:
                     try:
-                        r.db(CTF_DB).table('categories').filter( {'sid': new_category.id} ).update(rethink_updates).run(connection)
+                        r.db(CTF_DB).table('categories').filter(
+                            {'sid': new_category.id}).update(rethink_updates).run(connection)
                     except RqlRuntimeError as e:
                         #raise Exception('Error updating category from realtime database: %s' % (e))
-                        print('Error updating category from realtime database: %s' % (e))
+                        print(
+                            'Error updating category from realtime database: %s' % (e))
                     finally:
                         connection.close()
-        
+
             # redirect to category detail page
             return redirect('category_detail', pk=new_category.pk)
 
@@ -162,7 +169,8 @@ def category_edit(request, pk):
 @user_passes_test(lambda u: u.is_superuser)
 def challenge_list(request):
     challenges = Challenge.objects.all().order_by('created')
-    return render(request, 'challenges/challenge_list.html', {'challenges' : challenges})
+    return render(request, 'challenges/challenge_list.html', {'challenges': challenges})
+
 
 @xframe_options_exempt
 @user_passes_test(lambda u: u.is_superuser)
@@ -170,87 +178,88 @@ def challenge_detail(request, pk):
     challenge = get_object_or_404(Challenge, pk=pk)
     return render(request, 'challenges/challenge_detail.html', {'challenge': challenge})
 
+
 @xframe_options_exempt
 @user_passes_test(lambda u: u.is_superuser)
 def challenge_delete(request, pk):
     challenge = get_object_or_404(Challenge, pk=pk)
 
-
     connection = r.connect(host=RDB_HOST, port=RDB_PORT)
 
     teams = getDjangoTeamsWithSolvedChallengesByID(challenge.id)
-    
+
     rethink_updates = {}
     if teams:
         # print('matching teams')
         try:
-            for team in teams: 
-                print('Updating {0}\'s points.'.format(team.name))  
-                            
+            for team in teams:
+                print('Updating {0}\'s points.'.format(team.name))
+
                 # calculate the difference in points from old points value to new.
-                    
-                rethink_teams = r.db(CTF_DB).table('teams').filter({'sid':team.id}).run(connection)    
-                    
+
+                rethink_teams = r.db(CTF_DB).table('teams').filter(
+                    {'sid': team.id}).run(connection)
+
                 # use for loop to access the object(s) values and assign to team id variable
-                for rethink_team in rethink_teams: 
-                    print(rethink_team['id'])   
+                for rethink_team in rethink_teams:
+                    print(rethink_team['id'])
                     rethink_team_id = rethink_team['id']
-                    
+
                 rethink_team_object = r.db('redctf').table(
-                'teams').get(rethink_team_id).run(connection)
-                    
-                # get rethink team solved object 
+                    'teams').get(rethink_team_id).run(connection)
+
+                # get rethink team solved object
                 solved_object = rethink_team_object['solved']
 
                 # set django team points
                 team.points -= challenge.points
-                    
+
                 # set django correct_flags
-                team.correct_flags -= 1 
-                                    
+                team.correct_flags -= 1
+
                 # save backend updated team points
                 team.save()
-                    
+
                 # set update for rethinkdb team points
                 rethink_updates['points'] = team.points
-                    
+
                 # set update for rethinkdb team correct flags
                 rethink_updates['correct_flags'] = team.correct_flags
-                    
+
                 # remove solved challenge object
                 solved_challenge = team.solved.get(challenge_id=challenge.id)
-                    
-                    
+
                 rethink_updated_solved_object = []
                 # find solved challenges to delete within rethink solved object
-                # this will update the solved challenges to be everything except the one being deleted. 
+                # this will update the solved challenges to be everything except the one being deleted.
                 for index, rethink_solved_chall in enumerate(solved_object):
                     if rethink_solved_chall['id'] != challenge.id:
-                        rethink_updated_solved_object.append(rethink_solved_chall)
-                    
+                        rethink_updated_solved_object.append(
+                            rethink_solved_chall)
+
                 # update solved object for rethink update (with challenge removedt)
                 rethink_updates['solved'] = rethink_updated_solved_object
-                    
+
                 # run updates on rethink
                 update = r.db('redctf').table('teams') \
                     .get(rethink_team_id)\
                     .update(rethink_updates).run(connection)
                 print('updates: {0}'.format(update))
-                    
+
                 # delete rethink solved challenge
                 solved_challenge.delete()
-                    
+
         except Exception as ex:
             #raise Exception('error with teams: {0}'.format(ex))
             print('error with teams: {0}'.format(ex))
-        
+
     else:
         print('no matching teams')
 
-
     connection = r.connect(host=RDB_HOST, port=RDB_PORT)
     try:
-        r.db(CTF_DB).table('challenges').filter({'sid':challenge.id}).delete().run(connection)
+        r.db(CTF_DB).table('challenges').filter(
+            {'sid': challenge.id}).delete().run(connection)
         challenge.delete()
     except Exception as e:
         #raise Exception('Error deleting challenge from realtime database: %s' % (e))
@@ -260,22 +269,23 @@ def challenge_delete(request, pk):
 
     return redirect(challenge_list)
 
+
 @xframe_options_exempt
 @user_passes_test(lambda u: u.is_superuser)
-def challenge_new (request):
+def challenge_new(request):
 
     if request.method == 'POST':
         form = ChallengeForm(request.POST, request.FILES)
         if form.is_valid():
-            #No validation here (should already be done .is_valid)
-            
-            #need to save to assign id
+            # No validation here (should already be done .is_valid)
+
+            # need to save to assign id
             new_challenge = form.save()
 
-            #parse dockerfile for list of ports
+            # parse dockerfile for list of ports
             if new_challenge.upload:
                 if new_challenge.hosted:
-                    
+
                     try:
                         ports = list()
                         for line in new_challenge.upload.file:
@@ -283,12 +293,14 @@ def challenge_new (request):
                             start = 'EXPOSE '
 
                             if (start in line):
-                                possible_port = (line[line.find(start)+len(start):])
+                                possible_port = (
+                                    line[line.find(start)+len(start):])
                                 ports.append(possible_port.split())
 
                         # flatten list
-                        flattened_ports = list(set([val for sublist in ports for val in sublist]))
-                        print (flattened_ports)
+                        flattened_ports = list(
+                            set([val for sublist in ports for val in sublist]))
+                        print(flattened_ports)
 
                         if len(flattened_ports):
                             new_challenge.ports = flattened_ports
@@ -297,40 +309,43 @@ def challenge_new (request):
 
                     except Exception as e:
                         #raise Exception('Error parsing uploaded Dockerfile: ', e)
-                        print ('Error parsing uploaded Dockerfile: ', e)
+                        print('Error parsing uploaded Dockerfile: ', e)
                         new_challenge.ports = '****error parsing ports****'
-                    
-            #set var for pathPrefix and tag
+
+            # set var for pathPrefix and tag
             #path_tag = str(new_challenge.id) + '_' + re.sub('[^A-Za-z0-9]+', '', new_challenge.category.name.lower()) + str(new_challenge.points)
             path_tag = 'challenge_' + str(new_challenge.id)
             new_challenge.pathPrefix = path_tag
 
             if new_challenge.upload:
-                if new_challenge.hosted: 
-                    
+                if new_challenge.hosted:
+
                     image_name = path_tag + ':latest'
                     new_challenge.imageName = image_name
-                    
-                    #build image
-                    build = d.buildImage(fileobj=form.cleaned_data['upload'].file, tag=path_tag)
 
-                    #if build fails set vars as such
+                    # build image
+                    build = d.buildImage(
+                        fileobj=form.cleaned_data['upload'].file, tag=path_tag)
+
+                    # if build fails set vars as such
                     if not build:
                         error_msg = "****build image failed****"
                         new_challenge.pathPrefix = error_msg
                         new_challenge.imageName = error_msg
 
-                    new_challenge.upload.save(form.cleaned_data['upload'].name,form.cleaned_data['upload'])
-                    rethink_data = {'sid': new_challenge.id, 'category': new_challenge.category.id, 'title': new_challenge.title, 'points': new_challenge.points, 'description': new_challenge.description, 'hosted': new_challenge.hosted,
-                                    'fileUpload': new_challenge.fileUpload, 'imageName': new_challenge.imageName, 'ports': new_challenge.ports, 'pathPrefix': new_challenge.pathPrefix, 'created': format(new_challenge.created, 'U')}
-                
+                    new_challenge.upload.save(
+                        form.cleaned_data['upload'].name, form.cleaned_data['upload'])
+                    rethink_data = {'sid': new_challenge.id, 'category': new_challenge.category.id, 'title': new_challenge.title, 'points': new_challenge.points, 'description': new_challenge.description, 'hidden': new_challenge.hidden,
+                                    'hosted': new_challenge.hosted, 'fileUpload': new_challenge.fileUpload, 'imageName': new_challenge.imageName, 'ports': new_challenge.ports, 'pathPrefix': new_challenge.pathPrefix, 'created': format(new_challenge.created, 'U')}
+
                 elif new_challenge.fileUpload:
                     print('fileUpload')
                     new_challenge.upload.save(
                         form.cleaned_data['upload'].name, form.cleaned_data['upload'])
-                    rethink_data = {'sid': new_challenge.id, 'category': new_challenge.category.id, 'title': new_challenge.title, 'points': new_challenge.points, 'description': new_challenge.description, 'hosted': new_challenge.hosted,
-                                    'fileUpload': new_challenge.fileUpload, 'pathPrefix': new_challenge.pathPrefix, 'downloadPath': new_challenge.upload.url, 'created': format(new_challenge.created, 'U')}
-                    
+                    rethink_data = {'sid': new_challenge.id, 'category': new_challenge.category.id, 'title': new_challenge.title, 'points': new_challenge.points, 'description': new_challenge.description, 'hidden': new_challenge.hidden,
+                                    'hosted': new_challenge.hosted, 'fileUpload': new_challenge.fileUpload, 'pathPrefix': new_challenge.pathPrefix, 'downloadPath': new_challenge.upload.url, 'created': format(new_challenge.created, 'U')}
+            else:
+                rethink_data = {'sid': new_challenge.id, 'category': new_challenge.category.id, 'title': new_challenge.title, 'points': new_challenge.points, 'description': new_challenge.description, 'hidden': new_challenge.hidden, 'hosted': new_challenge.hosted, 'fileUpload': new_challenge.fileUpload, 'pathPrefix': new_challenge.pathPrefix, 'created': format(new_challenge.created, 'U')}
             new_challenge.save()
 
             # Push the realtime data to rethinkdb
@@ -344,7 +359,6 @@ def challenge_new (request):
             finally:
                 connection.close()
 
-
             return redirect('challenge_detail', pk=new_challenge.pk)
 
     # if a GET (or any other method) we'll create a blank form
@@ -352,6 +366,7 @@ def challenge_new (request):
         form = ChallengeForm()
 
     return render(request, 'challenges/challenge_edit.html', {'form': form})
+
 
 @xframe_options_exempt
 @user_passes_test(lambda u: u.is_superuser)
@@ -371,35 +386,40 @@ def challenge_edit(request, pk):
                 rethink_updates = {}
 
                 hosted_update_needed = False
+                hidden_update_needed = False
                 fileUpload_update_needed = False
                 upload_update_needed = False
                 for i in form.changed_data:
                     if i == 'hosted':
-                        print ('hosted change')
-                        hosted_update_needed = True                    
-                        
+                        print('hosted change')
+                        hosted_update_needed = True
+
+                    elif i == 'hidden':
+                        print('hidden change')
+                        hidden_update_needed = True
+
                     elif i == 'fileUpload':
-                        print ('fileUpload change')
+                        print('fileUpload change')
                         fileUpload_update_needed = True
-                        
+
                     elif i == 'upload':
-                        print ('uploaded file changed')
+                        print('uploaded file changed')
                         upload_update_needed = True
-                        
+
                     elif i == 'points':
                         print('points changed')
                         rethink_updates[i] = form.cleaned_data[i]
                         u = updatePoints(new_challenge, form.initial['points'])
                         print('update points: {0}'.format(u))
-                        
+
                     else:
-                        #but don't update the fields that get auto updated ^
+                        # but don't update the fields that get auto updated ^
                         if i != 'upload':
                             rethink_updates[i] = form.cleaned_data[i]
 
                 if hosted_update_needed:
                     rethink_updates['hosted'] = new_challenge.hosted
-                    if not new_challenge.hosted :
+                    if not new_challenge.hosted:
                         # new_challenge.pathPrefix = ''
                         # rethink_updates['pathPrefix'] = ''
 
@@ -409,49 +429,54 @@ def challenge_edit(request, pk):
                         new_challenge.ports = ''
                         rethink_updates['ports'] = ''
 
-                        if not new_challenge.fileUpload:  
-                            new_challenge.upload = None
-                                            
-                    
-                if fileUpload_update_needed:
-                    rethink_updates['fileUpload'] = new_challenge.fileUpload
-                    
-                    if not new_challenge.fileUpload: 
-                        # new_challenge.upload = None
-                        rethink_updates['downloadPath'] = ''
-                        
-                        if not new_challenge.hosted:
+                        if not new_challenge.fileUpload:
                             new_challenge.upload = None
 
+                if fileUpload_update_needed:
+                    rethink_updates['fileUpload'] = new_challenge.fileUpload
+
+                    if not new_challenge.fileUpload:
+                        # new_challenge.upload = None
+                        rethink_updates['downloadPath'] = ''
+
+                        if not new_challenge.hosted:
+                            new_challenge.upload = None
+                
+                if hidden_update_needed:
+                    rethink_updates['hidden'] = new_challenge.hidden
+
+
                 if upload_update_needed:
-                    print ('executing update')
-                    
+                    print('executing update')
+
                     if form.cleaned_data['upload']:
-                        #set var for pathPrefix and tag
+                        # set var for pathPrefix and tag
                         #path_tag = str(new_challenge.id) + '_' + re.sub('[^A-Za-z0-9]+', '', new_challenge.category.name.lower()) + str(new_challenge.points)
                         path_tag = 'challenge_' + str(new_challenge.id)
                         new_challenge.pathPrefix = path_tag
                         rethink_updates['pathPrefix'] = path_tag
 
-                        if new_challenge.hosted: 
+                        if new_challenge.hosted:
                             image_name = path_tag + ':latest'
                             new_challenge.imageName = image_name
                             rethink_updates['imageName'] = image_name
-                    
-                            #build image
-                            build = d.buildImage(fileobj=form.cleaned_data['upload'].file, tag=path_tag)
 
-                            #if build fails set vars as such
+                            # build image
+                            build = d.buildImage(
+                                fileobj=form.cleaned_data['upload'].file, tag=path_tag)
+
+                            # if build fails set vars as such
                             if not build:
                                 error_msg = "****build image failed****"
                                 new_challenge.pathPrefix = error_msg
                                 rethink_updates['pathPrefix'] = error_msg
                                 new_challenge.imageName = error_msg
                                 rethink_updates['imageName'] = error_msg
-                        
+
                         # save the uploaded file
-                        new_challenge.upload.save(form.cleaned_data['upload'].name,form.cleaned_data['upload'])
-                            
+                        new_challenge.upload.save(
+                            form.cleaned_data['upload'].name, form.cleaned_data['upload'])
+
                         if new_challenge.hosted:
                             try:
                                 ports = list()
@@ -460,12 +485,14 @@ def challenge_edit(request, pk):
                                     start = 'EXPOSE '
 
                                     if (start in line):
-                                        possible_port = (line[line.find(start)+len(start):])
+                                        possible_port = (
+                                            line[line.find(start)+len(start):])
                                         ports.append(possible_port.split())
 
                                 # flatten list
-                                flattened_ports = list(set([val for sublist in ports for val in sublist]))
-                                print (flattened_ports)
+                                flattened_ports = list(
+                                    set([val for sublist in ports for val in sublist]))
+                                print(flattened_ports)
 
                                 if len(flattened_ports):
                                     new_challenge.ports = flattened_ports
@@ -476,16 +503,14 @@ def challenge_edit(request, pk):
 
                             except Exception as e:
                                 #raise Exception('Error parsing uploaded Dockerfile: ', e)
-                                print ('Error parsing uploaded Dockerfile: ', e)
+                                print('Error parsing uploaded Dockerfile: ', e)
                                 new_challenge.ports = '****error parsing ports****'
                                 rethink_updates['ports'] = '****error parsing ports****'
-                                
-                        
-                    
-                        if new_challenge.fileUpload: 
-                            
+
+                        if new_challenge.fileUpload:
+
                             rethink_updates['downloadPath'] = new_challenge.upload.url
-                            
+
                     # else:
                     #     #file removed from object
                     #     #accept user values for ports and imageName
@@ -493,21 +518,21 @@ def challenge_edit(request, pk):
                     #     new_challenge.pathPrefix = ''
                     #     rethink_updates['pathPrefix'] = ''
 
-
                 print(rethink_updates)
 
                 connection = r.connect(host=RDB_HOST, port=RDB_PORT)
                 if len(rethink_updates) != 0:
                     try:
-                        r.db(CTF_DB).table('challenges').filter( {'sid': new_challenge.id} ).update(rethink_updates).run(connection)
+                        r.db(CTF_DB).table('challenges').filter(
+                            {'sid': new_challenge.id}).update(rethink_updates).run(connection)
                     except RqlRuntimeError as e:
                         #raise Exception('Error updating challenge from realtime database: %s' % (e))
-                        print('Error updating challenge from realtime database: %s' % (e))
+                        print(
+                            'Error updating challenge from realtime database: %s' % (e))
                     finally:
                         connection.close()
 
                 new_challenge.save()
-
 
             # redirect to challenge detail page
             return redirect('challenge_detail', pk=form.instance.pk)
@@ -524,7 +549,8 @@ def challenge_edit(request, pk):
 @user_passes_test(lambda u: u.is_superuser)
 def ctf_list(request):
     ctfs = Ctf.objects.all().order_by('created')
-    return render(request, 'ctfs/ctf_list.html', {'ctfs' : ctfs})
+    return render(request, 'ctfs/ctf_list.html', {'ctfs': ctfs})
+
 
 @xframe_options_exempt
 @user_passes_test(lambda u: u.is_superuser)
@@ -532,15 +558,17 @@ def ctf_detail(request, pk):
     ctf = get_object_or_404(Ctf, pk=pk)
     return render(request, 'ctfs/ctf_detail.html', {'ctf': ctf})
 
+
 @xframe_options_exempt
 @user_passes_test(lambda u: u.is_superuser)
 def ctf_delete(request, pk):
     ctf = get_object_or_404(Ctf, pk=pk)
 
-    #try rethink delete, then django delete
+    # try rethink delete, then django delete
     connection = r.connect(host=RDB_HOST, port=RDB_PORT)
     try:
-        r.db(CTF_DB).table('ctfs').filter({'sid':ctf.id}).delete().run(connection)
+        r.db(CTF_DB).table('ctfs').filter(
+            {'sid': ctf.id}).delete().run(connection)
         ctf.delete()
     except Exception as e:
         #raise Exception('Error deleting ctf from realtime database: %s' % (e))
@@ -550,26 +578,27 @@ def ctf_delete(request, pk):
 
     return redirect(ctf_list)
 
+
 @xframe_options_exempt
 @user_passes_test(lambda u: u.is_superuser)
-def ctf_new (request):
+def ctf_new(request):
 
     if request.method == 'POST':
         form = CtfForm(request.POST)
         if form.is_valid():
 
-            #create ctf object
+            # create ctf object
             new_ctf = form.save()
 
             # Push ctf to rethinkdb database
             connection = r.connect(host=RDB_HOST, port=RDB_PORT)
             try:
-                r.db(CTF_DB).table('ctfs').insert({ 'sid': new_ctf.id, 'start': format(new_ctf.start, 'U'), 'end': format(new_ctf.end, 'U'), 'created': format(new_ctf.created, 'U')}).run(connection)
+                r.db(CTF_DB).table('ctfs').insert({'sid': new_ctf.id, 'start': format(new_ctf.start, 'U'), 'end': format(
+                    new_ctf.end, 'U'), 'created': format(new_ctf.created, 'U')}).run(connection)
             except Exception as e:
                 raise Exception('Error adding ctf: %s' % (e))
             finally:
                 connection.close()
-
 
             return redirect('ctf_detail', pk=new_ctf.pk)
 
@@ -578,6 +607,7 @@ def ctf_new (request):
         form = CtfForm()
 
     return render(request, 'ctfs/ctf_edit.html', {'form': form})
+
 
 @xframe_options_exempt
 @user_passes_test(lambda u: u.is_superuser)
@@ -596,7 +626,7 @@ def ctf_edit(request, pk):
                 rethink_updates = {}
 
                 for i in form.changed_data:
-                    #only edit datetimes in ctf model so format everything as such (will need to update as add more to model)
+                    # only edit datetimes in ctf model so format everything as such (will need to update as add more to model)
                     rethink_updates[i] = format(form.cleaned_data[i], 'U')
 
                 print(rethink_updates)
@@ -604,13 +634,14 @@ def ctf_edit(request, pk):
                 connection = r.connect(host=RDB_HOST, port=RDB_PORT)
                 if len(rethink_updates) != 0:
                     try:
-                        r.db(CTF_DB).table('ctfs').filter( {'sid': new_ctf.id} ).update(rethink_updates).run(connection)
+                        r.db(CTF_DB).table('ctfs').filter({'sid': new_ctf.id}).update(
+                            rethink_updates).run(connection)
                     except RqlRuntimeError as e:
                         #raise Exception('Error updating ctf from realtime database: %s' % (e))
                         print('Error updating ctf from realtime database: %s' % (e))
                     finally:
                         connection.close()
-        
+
             # redirect to ctf detail page
             return redirect('ctf_detail', pk=new_ctf.pk)
 
@@ -627,7 +658,7 @@ def ctf_edit(request, pk):
 @user_passes_test(lambda u: u.is_superuser)
 def container_list(request):
     containers = Container.objects.all().order_by('created')
-    return render(request, 'containers/container_list.html', {'containers' : containers})
+    return render(request, 'containers/container_list.html', {'containers': containers})
 
 # @xframe_options_exempt
 # @user_passes_test(lambda u: u.is_superuser)
@@ -685,7 +716,8 @@ def container_list(request):
 @user_passes_test(lambda u: u.is_superuser)
 def team_list(request):
     teams = Team.objects.all().order_by('created')
-    return render(request, 'teams/team_list.html', {'teams' : teams})
+    return render(request, 'teams/team_list.html', {'teams': teams})
+
 
 @xframe_options_exempt
 @user_passes_test(lambda u: u.is_superuser)
@@ -693,15 +725,17 @@ def team_detail(request, pk):
     team = get_object_or_404(Team, pk=pk)
     return render(request, 'teams/team_detail.html', {'team': team})
 
+
 @xframe_options_exempt
 @user_passes_test(lambda u: u.is_superuser)
 def team_delete(request, pk):
     team = get_object_or_404(Team, pk=pk)
 
-    #try rethink delete, then django delete
+    # try rethink delete, then django delete
     connection = r.connect(host=RDB_HOST, port=RDB_PORT)
     try:
-        r.db(CTF_DB).table('teams').filter({'sid':team.id}).delete().run(connection)
+        r.db(CTF_DB).table('teams').filter(
+            {'sid': team.id}).delete().run(connection)
         team.delete()
     except Exception as e:
         #raise Exception('Error deleting team from realtime database: %s' % (e))
@@ -711,15 +745,16 @@ def team_delete(request, pk):
 
     return redirect(team_list)
 
+
 @xframe_options_exempt
 @user_passes_test(lambda u: u.is_superuser)
-def team_new (request):
+def team_new(request):
 
     if request.method == 'POST':
         form = TeamForm(request.POST)
         if form.is_valid():
 
-            #create team object but don't commit
+            # create team object but don't commit
             new_team = form.save(commit=False)
 
             # Create unique team token
@@ -728,20 +763,20 @@ def team_new (request):
                 token = str(uuid.uuid4())
 
             new_team.token = token
-            #commit so that you have team.id
+            # commit so that you have team.id
             new_team.save()
-            #have to specifically save many-to-many relationships when using commit=False
+            # have to specifically save many-to-many relationships when using commit=False
             form.save_m2m()
 
             # Push team to rethinkdb database
             connection = r.connect(host=RDB_HOST, port=RDB_PORT)
             try:
-                r.db(CTF_DB).table('teams').insert({ 'sid': new_team.id, 'name': new_team.name, 'token': token, 'points': new_team.points, 'hidden': new_team.hidden, 'correct_flags': new_team.correct_flags, 'wrong_flags': new_team.wrong_flags, 'solved': [], 'created': format(new_team.created, 'U')}).run(connection)
+                r.db(CTF_DB).table('teams').insert({'sid': new_team.id, 'name': new_team.name, 'token': token, 'points': new_team.points, 'hidden': new_team.hidden,
+                                                    'correct_flags': new_team.correct_flags, 'wrong_flags': new_team.wrong_flags, 'solved': [], 'created': format(new_team.created, 'U')}).run(connection)
             except Exception as e:
                 raise Exception('Error adding team: %s' % (e))
             finally:
                 connection.close()
-
 
             return redirect('team_detail', pk=new_team.pk)
 
@@ -750,6 +785,7 @@ def team_new (request):
         form = TeamForm()
 
     return render(request, 'teams/team_edit.html', {'form': form})
+
 
 @xframe_options_exempt
 @user_passes_test(lambda u: u.is_superuser)
@@ -775,13 +811,14 @@ def team_edit(request, pk):
                 connection = r.connect(host=RDB_HOST, port=RDB_PORT)
                 if len(rethink_updates) != 0:
                     try:
-                        r.db(CTF_DB).table('teams').filter( {'sid': new_team.id} ).update(rethink_updates).run(connection)
+                        r.db(CTF_DB).table('teams').filter({'sid': new_team.id}).update(
+                            rethink_updates).run(connection)
                     except RqlRuntimeError as e:
                         #raise Exception('Error updating team from realtime database: %s' % (e))
                         print('Error updating team from realtime database: %s' % (e))
                     finally:
                         connection.close()
-        
+
             # redirect to team detail page
             return redirect('team_detail', pk=new_team.pk)
 
@@ -798,13 +835,15 @@ def team_edit(request, pk):
 @user_passes_test(lambda u: u.is_superuser)
 def user_list(request):
     users = User.objects.all().order_by('created')
-    return render(request, 'users/user_list.html', {'users' : users})
+    return render(request, 'users/user_list.html', {'users': users})
+
 
 @xframe_options_exempt
 @user_passes_test(lambda u: u.is_superuser)
 def user_detail(request, pk):
     user = get_object_or_404(User, pk=pk)
     return render(request, 'users/user_detail.html', {'user': user})
+
 
 @xframe_options_exempt
 @user_passes_test(lambda u: u.is_superuser)
@@ -813,9 +852,10 @@ def user_delete(request, pk):
     user.delete()
     return redirect(user_list)
 
+
 @xframe_options_exempt
 @user_passes_test(lambda u: u.is_superuser)
-def user_new (request):
+def user_new(request):
 
     if request.method == 'POST':
         form = UserForm(request.POST)
@@ -829,6 +869,7 @@ def user_new (request):
         form = UserForm()
 
     return render(request, 'users/user_edit.html', {'form': form})
+
 
 @xframe_options_exempt
 @user_passes_test(lambda u: u.is_superuser)
@@ -853,9 +894,6 @@ def user_edit(request, pk):
 ############################################
 
 
-
-
-
 def getDjangoTeamsWithSolvedChallengesByID(chal_id):
 
     # get the django team object
@@ -868,39 +906,39 @@ def getDjangoTeamsWithSolvedChallengesByID(chal_id):
 
 def updatePoints(new_challenge, initial_points):
 
-    teams = getDjangoTeamsWithSolvedChallengesByID(new_challenge.id) 
-    
+    teams = getDjangoTeamsWithSolvedChallengesByID(new_challenge.id)
+
     connection = r.connect(host=RDB_HOST, port=RDB_PORT)
     rethink_updates = {}
-   
+
     if teams:
         try:
-            for team in teams: 
-                print('Updating {0}\'s points.'.format(team.name))  
-                        
+            for team in teams:
+                print('Updating {0}\'s points.'.format(team.name))
+
                 # calculate the difference in points from old points value to new.
                 chal_diff_points = abs(new_challenge.points - initial_points)
-                rethink_teams = r.db(CTF_DB).table('teams').filter({'sid':team.id}).run(connection)    
+                rethink_teams = r.db(CTF_DB).table('teams').filter(
+                    {'sid': team.id}).run(connection)
 
                 # use for loop to access the object(s) values and assign to team id variable
-                for rethink_team in rethink_teams: 
-                    # print(rethink_team['id'])   
+                for rethink_team in rethink_teams:
+                    # print(rethink_team['id'])
                     rethink_team_id = rethink_team['id']
-                
+
                 rethink_team_object = r.db('redctf').table(
-                'teams').get(rethink_team_id).run(connection)
-                
-                # get rethink team solved object 
+                    'teams').get(rethink_team_id).run(connection)
+
+                # get rethink team solved object
                 solved_object = rethink_team_object['solved']
-                
+
                 # print(rethink_team_id)
-            
-                
+
                 # if the initial points value is less than the new value for the challenge add the chal_diff_points to team's total points
                 if initial_points < new_challenge.points:
                     # update total team points
                     team.points += chal_diff_points
-                    
+
                 # if the initial points value is greater than the new value for the challenge subtract the chal_diff_points to team's total points
                 elif initial_points > new_challenge.points:
                     # update total team points
@@ -910,26 +948,26 @@ def updatePoints(new_challenge, initial_points):
                     print('no points change')
                     #raise Exception('updated points value is equal to the existing points value')
                     print('updated points value is equal to the existing points value')
-                
+
                 # set backend updated team points
                 team.save()
-                
+
                 # set update for rethinkdb team points
                 rethink_updates['points'] = team.points
-                
+
                 # update the team's solved challenge points
-                solved_challenge = team.solved.get(challenge_id=new_challenge.id)
+                solved_challenge = team.solved.get(
+                    challenge_id=new_challenge.id)
                 solved_challenge.points = new_challenge.points
-                
-                
+
                 # find challenges to update within rethink solved object
                 for index, rethink_solved_chall in enumerate(solved_object):
                     if rethink_solved_chall['id'] == new_challenge.id:
                         solved_object[index]['points'] = new_challenge.points
-                
+
                 # update solved object for rethink update
                 rethink_updates['solved'] = solved_object
-                
+
                 # run updates on rethink
                 update = r.db('redctf').table('teams') \
                     .get(rethink_team_id)\
@@ -939,8 +977,8 @@ def updatePoints(new_challenge, initial_points):
         except Exception as ex:
             #raise Exception('error with teams')
             print('error with teams')
-            
+
     else:
         print('no matching teams ')
-   
+
     return True

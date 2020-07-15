@@ -8,7 +8,7 @@ Everything is dockerized and easy to start development.
 ####  Development
 `docker-compose -f docker-compose.dev.yml up`
 
-#### Production
+#### Productions
 `docker-compose -f docker-compose.prod.yml up`
 
 

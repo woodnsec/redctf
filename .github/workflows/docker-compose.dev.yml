@@ -18,8 +18,8 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Rename target compose file
-      run: mv docker-compose.dev.yml docker-compose.yml
+      run: mv ${{ github.event.inputs.filename }} docker-compose.yml
     - name: list files
       run: ls -a
     - name: Build the Docker-compose file
-      run: docker-compose -f "${{ github.event.inputs.filename }}" up -d --build
+      run: docker-compose -f "docker-compose.yml" up -d --build

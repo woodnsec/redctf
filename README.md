@@ -17,7 +17,7 @@ Everything is dockerized and easy to start development.
 
 ## Composition
 
-#### Clients
+#### Client
 * ReactJS 15
 * React Router 4
 * Webpack 3

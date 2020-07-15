@@ -40,7 +40,7 @@ services:
       - ./server:/code
     ports:
       # for ptvsd django debugging
-      - "3456:3456"
+      - "8088:3456"
     environment:
       - RDB_HOST=rethinkdb
       - RDB_PORT=28015

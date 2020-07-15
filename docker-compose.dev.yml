@@ -50,7 +50,7 @@ services:
     networks:
       - traefik
     env_file:
-      - ./server/.env.dev
+      - ./server/.env.dev-sample
     labels:
       - traefik.enable=true
       - traefik.http.routers.django.rule=PathPrefix(`/graphql`) || PathPrefix(`/djangoadmin`) || PathPrefix(`/adminpanel`) || PathPrefix(`/category`) || PathPrefix(`/challenge`) || PathPrefix(`/container`) || PathPrefix(`/ctf`) || PathPrefix(`/team`) || PathPrefix(`/user`) || PathPrefix(`/static`) || PathPrefix(`/media`)
